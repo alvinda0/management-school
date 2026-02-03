@@ -27,15 +27,15 @@ func SetupRoutes(r *gin.Engine) {
 	protected := api.Group("/")
 	protected.Use(middleware.AuthMiddleware())
 	{
-		// User management routes with permission checks
-		protected.GET("/users", middleware.RequirePermission("user.read"), userHandler.GetAllUsers)
-		protected.GET("/users/:id", middleware.RequirePermission("user.read"), userHandler.GetUser)
-		protected.PUT("/users/:id", middleware.RequirePermission("user.update"), userHandler.UpdateUser)
-		protected.DELETE("/users/:id", middleware.RequirePermission("user.delete"), userHandler.DeleteUser)
+		// User management routes - basic access for all authenticated users
+		protected.GET("/users", userHandler.GetAllUsers)
+		protected.GET("/users/:id", userHandler.GetUser)
+		protected.PUT("/users/:id", userHandler.UpdateUser)
+		protected.DELETE("/users/:id", userHandler.DeleteUser)
 		
-		// Role management routes
-		protected.GET("/roles", middleware.RequirePermission("role.read"), roleHandler.GetAllRoles)
-		protected.GET("/roles/:id", middleware.RequirePermission("role.read"), roleHandler.GetRole)
+		// Role management routes - basic access for all authenticated users
+		protected.GET("/roles", roleHandler.GetAllRoles)
+		protected.GET("/roles/:id", roleHandler.GetRole)
 		
 		// Admin-only routes (system and kepala sekolah only)
 		adminOnly := protected.Group("/admin")
@@ -52,18 +52,18 @@ func SetupRoutes(r *gin.Engine) {
 		management.Use(middleware.RequireAnyRole("kepala_sekolah", "staff", "guru"))
 		{
 			// Academic management
-			management.GET("/academic", middleware.RequirePermission("academic.read"), func(c *gin.Context) {
+			management.GET("/academic", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Academic data"})
 			})
-			management.POST("/academic", middleware.RequirePermission("academic.manage"), func(c *gin.Context) {
+			management.POST("/academic", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Academic data created"})
 			})
 			
 			// Student management
-			management.GET("/students", middleware.RequirePermission("student.read"), func(c *gin.Context) {
+			management.GET("/students", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Student data"})
 			})
-			management.POST("/students", middleware.RequirePermission("student.manage"), func(c *gin.Context) {
+			management.POST("/students", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Student created"})
 			})
 		}
@@ -72,10 +72,10 @@ func SetupRoutes(r *gin.Engine) {
 		teacherOnly := protected.Group("/teacher")
 		teacherOnly.Use(middleware.RequireRole("guru"))
 		{
-			teacherOnly.GET("/classes", middleware.RequirePermission("class.read"), func(c *gin.Context) {
+			teacherOnly.GET("/classes", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Class data for teacher"})
 			})
-			teacherOnly.POST("/classes", middleware.RequirePermission("class.manage"), func(c *gin.Context) {
+			teacherOnly.POST("/classes", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Class created by teacher"})
 			})
 		}
@@ -87,7 +87,7 @@ func SetupRoutes(r *gin.Engine) {
 			studentOnly.GET("/profile", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Student profile"})
 			})
-			studentOnly.GET("/grades", middleware.RequirePermission("academic.read"), func(c *gin.Context) {
+			studentOnly.GET("/grades", func(c *gin.Context) {
 				c.JSON(200, gin.H{"message": "Student grades"})
 			})
 		}

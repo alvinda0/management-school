@@ -13,12 +13,6 @@ func SeedDatabase() {
 
 	// Seed roles
 	seedRoles()
-	
-	// Seed permissions
-	seedPermissions()
-	
-	// Assign permissions to roles
-	assignPermissionsToRoles()
 
 	// Seed default users
 	seedUsers()
@@ -66,119 +60,6 @@ func seedRoles() {
 	}
 }
 
-func seedPermissions() {
-	permissions := []model.Permission{
-		// User permissions
-		{Name: "user.create", Description: "Create new users", Resource: "user", Action: "create"},
-		{Name: "user.read", Description: "View users", Resource: "user", Action: "read"},
-		{Name: "user.update", Description: "Update users", Resource: "user", Action: "update"},
-		{Name: "user.delete", Description: "Delete users", Resource: "user", Action: "delete"},
-		
-		// Role permissions
-		{Name: "role.create", Description: "Create new roles", Resource: "role", Action: "create"},
-		{Name: "role.read", Description: "View roles", Resource: "role", Action: "read"},
-		{Name: "role.update", Description: "Update roles", Resource: "role", Action: "update"},
-		{Name: "role.delete", Description: "Delete roles", Resource: "role", Action: "delete"},
-		
-		// Academic permissions
-		{Name: "academic.manage", Description: "Manage academic data", Resource: "academic", Action: "manage"},
-		{Name: "academic.read", Description: "View academic data", Resource: "academic", Action: "read"},
-		
-		// Student permissions
-		{Name: "student.manage", Description: "Manage student data", Resource: "student", Action: "manage"},
-		{Name: "student.read", Description: "View student data", Resource: "student", Action: "read"},
-		
-		// Teacher permissions
-		{Name: "teacher.manage", Description: "Manage teacher data", Resource: "teacher", Action: "manage"},
-		{Name: "teacher.read", Description: "View teacher data", Resource: "teacher", Action: "read"},
-		
-		// Class permissions
-		{Name: "class.manage", Description: "Manage class data", Resource: "class", Action: "manage"},
-		{Name: "class.read", Description: "View class data", Resource: "class", Action: "read"},
-		
-		// Report permissions
-		{Name: "report.generate", Description: "Generate reports", Resource: "report", Action: "generate"},
-		{Name: "report.read", Description: "View reports", Resource: "report", Action: "read"},
-		
-		// System permissions
-		{Name: "system.manage", Description: "Manage system settings", Resource: "system", Action: "manage"},
-	}
-
-	for _, permission := range permissions {
-		var existingPermission model.Permission
-		result := config.DB.Where("name = ?", permission.Name).First(&existingPermission)
-		if result.Error != nil {
-			// Permission doesn't exist, create it
-			if err := config.DB.Create(&permission).Error; err != nil {
-				log.Printf("Error creating permission %s: %v", permission.Name, err)
-			} else {
-				log.Printf("Created permission: %s", permission.Name)
-			}
-		} else {
-			log.Printf("Permission %s already exists", permission.Name)
-		}
-	}
-}
-
-func assignPermissionsToRoles() {
-	// Get roles
-	var systemRole, kepalaSekolahRole, staffRole, guruRole, siswaRole model.Role
-	config.DB.Where("name = ?", "system").First(&systemRole)
-	config.DB.Where("name = ?", "kepala_sekolah").First(&kepalaSekolahRole)
-	config.DB.Where("name = ?", "staff").First(&staffRole)
-	config.DB.Where("name = ?", "guru").First(&guruRole)
-	config.DB.Where("name = ?", "siswa").First(&siswaRole)
-
-	// Get all permissions
-	var allPermissions []model.Permission
-	config.DB.Find(&allPermissions)
-
-	// System gets all permissions
-	if systemRole.ID != 0 {
-		config.DB.Model(&systemRole).Association("Permissions").Replace(allPermissions)
-		log.Println("Assigned all permissions to system role")
-	}
-
-	// Kepala Sekolah gets ALL permissions (same as system)
-	if kepalaSekolahRole.ID != 0 {
-		config.DB.Model(&kepalaSekolahRole).Association("Permissions").Replace(allPermissions)
-		log.Println("Assigned ALL permissions to kepala sekolah role")
-	}
-
-	// Staff gets administrative permissions
-	if staffRole.ID != 0 {
-		var staffPermissions []model.Permission
-		config.DB.Where("name IN ?", []string{
-			"user.read", "user.update", "academic.read",
-			"student.manage", "student.read", "teacher.read",
-			"class.read", "report.read",
-		}).Find(&staffPermissions)
-		config.DB.Model(&staffRole).Association("Permissions").Replace(staffPermissions)
-		log.Println("Assigned administrative permissions to staff role")
-	}
-
-	// Guru gets teaching permissions
-	if guruRole.ID != 0 {
-		var guruPermissions []model.Permission
-		config.DB.Where("name IN ?", []string{
-			"user.read", "academic.read", "student.read",
-			"class.manage", "class.read", "report.read",
-		}).Find(&guruPermissions)
-		config.DB.Model(&guruRole).Association("Permissions").Replace(guruPermissions)
-		log.Println("Assigned teaching permissions to guru role")
-	}
-
-	// Siswa gets basic permissions
-	if siswaRole.ID != 0 {
-		var siswaPermissions []model.Permission
-		config.DB.Where("name IN ?", []string{
-			"academic.read", "class.read", "report.read",
-		}).Find(&siswaPermissions)
-		config.DB.Model(&siswaRole).Association("Permissions").Replace(siswaPermissions)
-		log.Println("Assigned basic permissions to siswa role")
-	}
-}
-
 func seedUsers() {
 	// Get system role
 	var systemRole model.Role
@@ -219,7 +100,6 @@ func seedUsers() {
 }
 
 func hashPassword(password string) (string, error) {
-	// Import crypto/bcrypt at the top of the file
 	const cost = 12
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	return string(bytes), err
