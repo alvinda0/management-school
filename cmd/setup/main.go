@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"project-go/config"
@@ -129,9 +130,11 @@ func createTables() error {
 func insertInitialData() error {
 	// Insert roles
 	roles := []map[string]interface{}{
-		{"name": "admin", "description": "Administrator with full access"},
-		{"name": "teacher", "description": "Teacher with limited access"},
-		{"name": "student", "description": "Student with basic access"},
+		{"name": "system", "description": "System administrator with full access"},
+		{"name": "kepala_sekolah", "description": "Kepala sekolah dengan akses manajemen penuh"},
+		{"name": "staff", "description": "Staff administrasi dengan akses terbatas"},
+		{"name": "guru", "description": "Guru dengan akses pembelajaran dan siswa"},
+		{"name": "siswa", "description": "Siswa dengan akses dasar"},
 	}
 	
 	for _, role := range roles {
@@ -143,14 +146,40 @@ func insertInitialData() error {
 	
 	// Insert permissions
 	permissions := []map[string]interface{}{
+		// User permissions
 		{"name": "user.create", "description": "Create new users", "resource": "user", "action": "create"},
 		{"name": "user.read", "description": "View users", "resource": "user", "action": "read"},
 		{"name": "user.update", "description": "Update users", "resource": "user", "action": "update"},
 		{"name": "user.delete", "description": "Delete users", "resource": "user", "action": "delete"},
+		
+		// Role permissions
 		{"name": "role.create", "description": "Create new roles", "resource": "role", "action": "create"},
 		{"name": "role.read", "description": "View roles", "resource": "role", "action": "read"},
 		{"name": "role.update", "description": "Update roles", "resource": "role", "action": "update"},
 		{"name": "role.delete", "description": "Delete roles", "resource": "role", "action": "delete"},
+		
+		// Academic permissions
+		{"name": "academic.manage", "description": "Manage academic data", "resource": "academic", "action": "manage"},
+		{"name": "academic.read", "description": "View academic data", "resource": "academic", "action": "read"},
+		
+		// Student permissions
+		{"name": "student.manage", "description": "Manage student data", "resource": "student", "action": "manage"},
+		{"name": "student.read", "description": "View student data", "resource": "student", "action": "read"},
+		
+		// Teacher permissions
+		{"name": "teacher.manage", "description": "Manage teacher data", "resource": "teacher", "action": "manage"},
+		{"name": "teacher.read", "description": "View teacher data", "resource": "teacher", "action": "read"},
+		
+		// Class permissions
+		{"name": "class.manage", "description": "Manage class data", "resource": "class", "action": "manage"},
+		{"name": "class.read", "description": "View class data", "resource": "class", "action": "read"},
+		
+		// Report permissions
+		{"name": "report.generate", "description": "Generate reports", "resource": "report", "action": "generate"},
+		{"name": "report.read", "description": "View reports", "resource": "report", "action": "read"},
+		
+		// System permissions
+		{"name": "system.manage", "description": "Manage system settings", "resource": "system", "action": "manage"},
 	}
 	
 	for _, perm := range permissions {
@@ -161,30 +190,108 @@ func insertInitialData() error {
 	}
 	
 	// Assign permissions to roles
-	// Admin gets all permissions
+	// System gets all permissions
 	config.DB.Exec(`
 		INSERT INTO role_permissions (role_id, permission_id)
 		SELECT r.id, p.id FROM roles r, permissions p 
-		WHERE r.name = 'admin'
+		WHERE r.name = 'system'
 		ON CONFLICT DO NOTHING
 	`)
 	
-	// Teacher gets limited permissions
+	// Kepala Sekolah gets management permissions
 	config.DB.Exec(`
 		INSERT INTO role_permissions (role_id, permission_id)
 		SELECT r.id, p.id FROM roles r, permissions p 
-		WHERE r.name = 'teacher' AND p.name IN ('user.read', 'role.read')
+		WHERE r.name = 'kepala_sekolah' AND p.name IN (
+			'user.create', 'user.read', 'user.update', 'user.delete',
+			'role.read', 'academic.manage', 'academic.read',
+			'student.manage', 'student.read', 'teacher.manage', 'teacher.read',
+			'class.manage', 'class.read', 'report.generate', 'report.read'
+		)
 		ON CONFLICT DO NOTHING
 	`)
 	
-	// Student gets basic permissions
+	// Staff gets administrative permissions
 	config.DB.Exec(`
 		INSERT INTO role_permissions (role_id, permission_id)
 		SELECT r.id, p.id FROM roles r, permissions p 
-		WHERE r.name = 'student' AND p.name IN ('user.read')
+		WHERE r.name = 'staff' AND p.name IN (
+			'user.read', 'user.update', 'academic.read',
+			'student.manage', 'student.read', 'teacher.read',
+			'class.read', 'report.read'
+		)
 		ON CONFLICT DO NOTHING
 	`)
+	
+	// Guru gets teaching permissions
+	config.DB.Exec(`
+		INSERT INTO role_permissions (role_id, permission_id)
+		SELECT r.id, p.id FROM roles r, permissions p 
+		WHERE r.name = 'guru' AND p.name IN (
+			'user.read', 'academic.read', 'student.read',
+			'class.manage', 'class.read', 'report.read'
+		)
+		ON CONFLICT DO NOTHING
+	`)
+	
+	// Siswa gets basic permissions
+	config.DB.Exec(`
+		INSERT INTO role_permissions (role_id, permission_id)
+		SELECT r.id, p.id FROM roles r, permissions p 
+		WHERE r.name = 'siswa' AND p.name IN (
+			'academic.read', 'class.read', 'report.read'
+		)
+		ON CONFLICT DO NOTHING
+	`)
+
+	// Insert default system user
+	err := insertSystemUser()
+	if err != nil {
+		log.Printf("Warning: Could not create system user: %v", err)
+	}
 	
 	log.Println("Initial data inserted successfully!")
 	return nil
+}
+
+func insertSystemUser() error {
+	// Check if system user already exists
+	var count int64
+	config.DB.Raw("SELECT COUNT(*) FROM users WHERE email = ?", "system@gmail.com").Scan(&count)
+	if count > 0 {
+		log.Println("System user already exists")
+		return nil
+	}
+
+	// Hash password
+	hashedPassword, err := hashPassword("system123")
+	if err != nil {
+		return fmt.Errorf("error hashing password: %v", err)
+	}
+
+	// Get system role ID
+	var roleID uint
+	err = config.DB.Raw("SELECT id FROM roles WHERE name = ?", "system").Scan(&roleID).Error
+	if err != nil {
+		return fmt.Errorf("system role not found: %v", err)
+	}
+
+	// Insert system user
+	err = config.DB.Exec(`
+		INSERT INTO users (username, email, password, role_id) 
+		VALUES (?, ?, ?, ?)
+	`, "system", "system@gmail.com", hashedPassword, roleID).Error
+	
+	if err != nil {
+		return fmt.Errorf("error creating system user: %v", err)
+	}
+
+	log.Println("Created system user successfully")
+	return nil
+}
+
+func hashPassword(password string) (string, error) {
+	const cost = 12
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), cost)
+	return string(bytes), err
 }
