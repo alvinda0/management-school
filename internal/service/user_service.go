@@ -12,10 +12,10 @@ import (
 type UserService interface {
 	Register(req *model.UserRequest) (*model.UserResponse, error)
 	Login(req *model.LoginRequest) (string, error)
-	GetUserByID(id uint) (*model.UserResponse, error)
+	GetUserByID(id string) (*model.UserResponse, error)
 	GetAllUsers() ([]model.UserResponse, error)
-	UpdateUser(id uint, req *model.UserRequest) (*model.UserResponse, error)
-	DeleteUser(id uint) error
+	UpdateUser(id string, req *model.UserRequest) (*model.UserResponse, error)
+	DeleteUser(id string) error
 }
 
 type userService struct {
@@ -89,7 +89,7 @@ func (s *userService) Login(req *model.LoginRequest) (string, error) {
 	return token, nil
 }
 
-func (s *userService) GetUserByID(id uint) (*model.UserResponse, error) {
+func (s *userService) GetUserByID(id string) (*model.UserResponse, error) {
 	user, err := s.userRepo.GetByID(id)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (s *userService) GetAllUsers() ([]model.UserResponse, error) {
 	return userResponses, nil
 }
 
-func (s *userService) UpdateUser(id uint, req *model.UserRequest) (*model.UserResponse, error) {
+func (s *userService) UpdateUser(id string, req *model.UserRequest) (*model.UserResponse, error) {
 	user, err := s.userRepo.GetByID(id)
 	if err != nil {
 		return nil, err
@@ -150,22 +150,11 @@ func (s *userService) UpdateUser(id uint, req *model.UserRequest) (*model.UserRe
 	return s.mapToUserResponse(updatedUser), nil
 }
 
-func (s *userService) DeleteUser(id uint) error {
+func (s *userService) DeleteUser(id string) error {
 	return s.userRepo.Delete(id)
 }
 
 func (s *userService) mapToUserResponse(user *model.User) *model.UserResponse {
-	var permissions []model.PermissionResponse
-	for _, perm := range user.Role.Permissions {
-		permissions = append(permissions, model.PermissionResponse{
-			ID:          perm.ID,
-			Name:        perm.Name,
-			Description: perm.Description,
-			Resource:    perm.Resource,
-			Action:      perm.Action,
-		})
-	}
-
 	return &model.UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
@@ -174,7 +163,6 @@ func (s *userService) mapToUserResponse(user *model.User) *model.UserResponse {
 			ID:          user.Role.ID,
 			Name:        user.Role.Name,
 			Description: user.Role.Description,
-			Permissions: permissions,
 		},
 	}
 }

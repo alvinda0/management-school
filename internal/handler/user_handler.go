@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"project-go/internal/model"
@@ -53,14 +52,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 func (h *UserHandler) GetUser(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	user, err := h.userService.GetUserByID(uint(id))
+	user, err := h.userService.GetUserByID(id)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "User not found")
 		return
@@ -80,9 +78,8 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 }
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
@@ -93,7 +90,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.UpdateUser(uint(id), &req)
+	user, err := h.userService.UpdateUser(id, &req)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
@@ -103,14 +100,13 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	err = h.userService.DeleteUser(uint(id))
+	err := h.userService.DeleteUser(id)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return

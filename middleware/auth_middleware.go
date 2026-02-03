@@ -39,51 +39,6 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func RequirePermission(permission string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		roleID, exists := c.Get("roleID")
-		if !exists {
-			utils.ErrorResponse(c, http.StatusUnauthorized, "Role not found in token")
-			c.Abort()
-			return
-		}
-
-		// Check if the role has the required permission
-		hasPermission := checkRolePermission(roleID.(uint), permission)
-		if !hasPermission {
-			utils.ErrorResponse(c, http.StatusForbidden, "Insufficient permissions")
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// Dynamic permission check using database
-func checkRolePermission(roleID uint, permission string) bool {
-	// Get role with permissions from database
-	var role model.Role
-	err := config.DB.Preload("Permissions").First(&role, roleID).Error
-	if err != nil {
-		return false
-	}
-
-	// System and Kepala Sekolah have full access to everything
-	if role.Name == "system" || role.Name == "kepala_sekolah" {
-		return true
-	}
-
-	// Check if role has the specific permission
-	for _, perm := range role.Permissions {
-		if perm.Name == permission {
-			return true
-		}
-	}
-
-	return false
-}
-
 // RequireRole checks if user has specific role
 func RequireRole(roleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -96,7 +51,7 @@ func RequireRole(roleName string) gin.HandlerFunc {
 
 		// Get role from database
 		var role model.Role
-		err := config.DB.First(&role, roleID.(uint)).Error
+		err := config.DB.First(&role, "id = ?", roleID.(string)).Error
 		if err != nil {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid role")
 			c.Abort()
@@ -132,7 +87,7 @@ func RequireAnyRole(roleNames ...string) gin.HandlerFunc {
 
 		// Get role from database
 		var role model.Role
-		err := config.DB.First(&role, roleID.(uint)).Error
+		err := config.DB.First(&role, "id = ?", roleID.(string)).Error
 		if err != nil {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid role")
 			c.Abort()
@@ -170,7 +125,7 @@ func IsSystemOrKepalaSekolah() gin.HandlerFunc {
 
 		// Get role from database
 		var role model.Role
-		err := config.DB.First(&role, roleID.(uint)).Error
+		err := config.DB.First(&role, "id = ?", roleID.(string)).Error
 		if err != nil {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid role")
 			c.Abort()

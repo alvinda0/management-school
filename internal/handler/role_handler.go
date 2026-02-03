@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"project-go/internal/model"
@@ -31,14 +30,13 @@ func (h *RoleHandler) GetAllRoles(c *gin.Context) {
 }
 
 func (h *RoleHandler) GetRole(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid role ID")
 		return
 	}
 
-	role, err := h.roleRepo.GetWithPermissions(uint(id))
+	role, err := h.roleRepo.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Role not found")
 		return
@@ -46,6 +44,7 @@ func (h *RoleHandler) GetRole(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, "Role retrieved successfully", role)
 }
+
 func (h *RoleHandler) CreateRole(c *gin.Context) {
 	var req struct {
 		Name        string `json:"name" binding:"required"`
@@ -71,9 +70,8 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 }
 
 func (h *RoleHandler) UpdateRole(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid role ID")
 		return
 	}
@@ -89,7 +87,7 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	}
 
 	// Get existing role
-	role, err := h.roleRepo.GetByID(uint(id))
+	role, err := h.roleRepo.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Role not found")
 		return
@@ -112,21 +110,20 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 }
 
 func (h *RoleHandler) DeleteRole(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
+	id := c.Param("id")
+	if id == "" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid role ID")
 		return
 	}
 
 	// Check if role exists
-	_, err = h.roleRepo.GetByID(uint(id))
+	_, err := h.roleRepo.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Role not found")
 		return
 	}
 
-	if err := h.roleRepo.Delete(uint(id)); err != nil {
+	if err := h.roleRepo.Delete(id); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}

@@ -9,10 +9,10 @@ import (
 
 type UserRepository interface {
 	Create(user *model.User) error
-	GetByID(id uint) (*model.User, error)
+	GetByID(id string) (*model.User, error)
 	GetByEmail(email string) (*model.User, error)
 	Update(user *model.User) error
-	Delete(id uint) error
+	Delete(id string) error
 	GetAll() ([]model.User, error)
 }
 
@@ -30,15 +30,15 @@ func (r *userRepository) Create(user *model.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *userRepository) GetByID(id uint) (*model.User, error) {
+func (r *userRepository) GetByID(id string) (*model.User, error) {
 	var user model.User
-	err := r.db.Preload("Role.Permissions").First(&user, id).Error
+	err := r.db.Preload("Role").First(&user, "id = ?", id).Error
 	return &user, err
 }
 
 func (r *userRepository) GetByEmail(email string) (*model.User, error) {
 	var user model.User
-	err := r.db.Preload("Role.Permissions").Where("email = ?", email).First(&user).Error
+	err := r.db.Preload("Role").Where("email = ?", email).First(&user).Error
 	return &user, err
 }
 
@@ -46,8 +46,8 @@ func (r *userRepository) Update(user *model.User) error {
 	return r.db.Save(user).Error
 }
 
-func (r *userRepository) Delete(id uint) error {
-	return r.db.Delete(&model.User{}, id).Error
+func (r *userRepository) Delete(id string) error {
+	return r.db.Delete(&model.User{}, "id = ?", id).Error
 }
 
 func (r *userRepository) GetAll() ([]model.User, error) {
