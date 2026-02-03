@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"project-go/config"
+	"project-go/internal/model"
 	"project-go/utils"
 )
 
@@ -46,8 +48,7 @@ func RequirePermission(permission string) gin.HandlerFunc {
 			return
 		}
 
-		// Here you would check if the role has the required permission
-		// For now, we'll implement a basic check
+		// Check if the role has the required permission
 		hasPermission := checkRolePermission(roleID.(uint), permission)
 		if !hasPermission {
 			utils.ErrorResponse(c, http.StatusForbidden, "Insufficient permissions")
@@ -59,22 +60,130 @@ func RequirePermission(permission string) gin.HandlerFunc {
 	}
 }
 
-// Basic permission check - in production, this should query the database
+// Dynamic permission check using database
 func checkRolePermission(roleID uint, permission string) bool {
-	// Role 1 (admin) has all permissions
-	if roleID == 1 {
+	// Get role with permissions from database
+	var role model.Role
+	err := config.DB.Preload("Permissions").First(&role, roleID).Error
+	if err != nil {
+		return false
+	}
+
+	// System and Kepala Sekolah have full access to everything
+	if role.Name == "system" || role.Name == "kepala_sekolah" {
 		return true
 	}
-	
-	// Role 2 (teacher) has read permissions
-	if roleID == 2 && (permission == "user.read" || permission == "role.read") {
-		return true
+
+	// Check if role has the specific permission
+	for _, perm := range role.Permissions {
+		if perm.Name == permission {
+			return true
+		}
 	}
-	
-	// Role 3 (student) has basic read permission
-	if roleID == 3 && permission == "user.read" {
-		return true
-	}
-	
+
 	return false
+}
+
+// RequireRole checks if user has specific role
+func RequireRole(roleName string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleID, exists := c.Get("roleID")
+		if !exists {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Role not found in token")
+			c.Abort()
+			return
+		}
+
+		// Get role from database
+		var role model.Role
+		err := config.DB.First(&role, roleID.(uint)).Error
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid role")
+			c.Abort()
+			return
+		}
+
+		// System and Kepala Sekolah can access everything
+		if role.Name == "system" || role.Name == "kepala_sekolah" {
+			c.Next()
+			return
+		}
+
+		// Check if user has the required role
+		if role.Name != roleName {
+			utils.ErrorResponse(c, http.StatusForbidden, "Insufficient role privileges")
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RequireAnyRole checks if user has any of the specified roles
+func RequireAnyRole(roleNames ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleID, exists := c.Get("roleID")
+		if !exists {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Role not found in token")
+			c.Abort()
+			return
+		}
+
+		// Get role from database
+		var role model.Role
+		err := config.DB.First(&role, roleID.(uint)).Error
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid role")
+			c.Abort()
+			return
+		}
+
+		// System and Kepala Sekolah can access everything
+		if role.Name == "system" || role.Name == "kepala_sekolah" {
+			c.Next()
+			return
+		}
+
+		// Check if user has any of the required roles
+		for _, roleName := range roleNames {
+			if role.Name == roleName {
+				c.Next()
+				return
+			}
+		}
+
+		utils.ErrorResponse(c, http.StatusForbidden, "Insufficient role privileges")
+		c.Abort()
+	}
+}
+
+// IsSystemOrKepalaSekolah checks if user is system admin or kepala sekolah
+func IsSystemOrKepalaSekolah() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleID, exists := c.Get("roleID")
+		if !exists {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Role not found in token")
+			c.Abort()
+			return
+		}
+
+		// Get role from database
+		var role model.Role
+		err := config.DB.First(&role, roleID.(uint)).Error
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid role")
+			c.Abort()
+			return
+		}
+
+		// Only system and kepala sekolah can access
+		if role.Name != "system" && role.Name != "kepala_sekolah" {
+			utils.ErrorResponse(c, http.StatusForbidden, "Access restricted to system admin and kepala sekolah only")
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
 }

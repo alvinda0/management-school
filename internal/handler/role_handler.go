@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"project-go/internal/model"
 	"project-go/internal/repository"
 	"project-go/utils"
 )
@@ -44,4 +45,91 @@ func (h *RoleHandler) GetRole(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Role retrieved successfully", role)
+}
+func (h *RoleHandler) CreateRole(c *gin.Context) {
+	var req struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	role := &model.Role{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	if err := h.roleRepo.Create(role); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusCreated, "Role created successfully", role)
+}
+
+func (h *RoleHandler) UpdateRole(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid role ID")
+		return
+	}
+
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Get existing role
+	role, err := h.roleRepo.GetByID(uint(id))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Role not found")
+		return
+	}
+
+	// Update fields
+	if req.Name != "" {
+		role.Name = req.Name
+	}
+	if req.Description != "" {
+		role.Description = req.Description
+	}
+
+	if err := h.roleRepo.Update(role); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Role updated successfully", role)
+}
+
+func (h *RoleHandler) DeleteRole(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid role ID")
+		return
+	}
+
+	// Check if role exists
+	_, err = h.roleRepo.GetByID(uint(id))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Role not found")
+		return
+	}
+
+	if err := h.roleRepo.Delete(uint(id)); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Role deleted successfully", nil)
 }

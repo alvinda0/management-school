@@ -139,17 +139,10 @@ func assignPermissionsToRoles() {
 		log.Println("Assigned all permissions to system role")
 	}
 
-	// Kepala Sekolah gets management permissions
+	// Kepala Sekolah gets ALL permissions (same as system)
 	if kepalaSekolahRole.ID != 0 {
-		var kepalaSekolahPermissions []model.Permission
-		config.DB.Where("name IN ?", []string{
-			"user.create", "user.read", "user.update", "user.delete",
-			"role.read", "academic.manage", "academic.read",
-			"student.manage", "student.read", "teacher.manage", "teacher.read",
-			"class.manage", "class.read", "report.generate", "report.read",
-		}).Find(&kepalaSekolahPermissions)
-		config.DB.Model(&kepalaSekolahRole).Association("Permissions").Replace(kepalaSekolahPermissions)
-		log.Println("Assigned management permissions to kepala sekolah role")
+		config.DB.Model(&kepalaSekolahRole).Association("Permissions").Replace(allPermissions)
+		log.Println("Assigned ALL permissions to kepala sekolah role")
 	}
 
 	// Staff gets administrative permissions

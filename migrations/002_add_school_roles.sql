@@ -28,15 +28,10 @@ SELECT r.id, p.id FROM roles r, permissions p
 WHERE r.name = 'system'
 ON CONFLICT DO NOTHING;
 
--- Assign management permissions to kepala sekolah role
+-- Assign ALL permissions to kepala sekolah role (same as system)
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r, permissions p 
-WHERE r.name = 'kepala_sekolah' AND p.name IN (
-    'user.create', 'user.read', 'user.update', 'user.delete',
-    'role.read', 'academic.manage', 'academic.read',
-    'student.manage', 'student.read', 'teacher.manage', 'teacher.read',
-    'class.manage', 'class.read', 'report.generate', 'report.read'
-)
+WHERE r.name = 'kepala_sekolah'
 ON CONFLICT DO NOTHING;
 
 -- Assign administrative permissions to staff role

@@ -1,0 +1,265 @@
+{
+  "info": {
+    "name": "Role System Test",
+    "description": "Test cases untuk sistem role dimana system dan kepala sekolah bisa akses semuanya"
+  },
+  "tests": [
+    {
+      "name": "Login as System Admin",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "system@gmail.com",
+          "password": "system123"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "save_token": "system_token"
+      }
+    },
+    {
+      "name": "System - Access All Users (should work)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/users",
+        "headers": {
+          "Authorization": "Bearer {{system_token}}"
+        }
+      },
+      "expected": {
+        "status": 200
+      }
+    },
+    {
+      "name": "System - Create Role (admin only - should work)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/admin/roles",
+        "headers": {
+          "Authorization": "Bearer {{system_token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "test_role",
+          "description": "Test role created by system"
+        }
+      },
+      "expected": {
+        "status": 201
+      }
+    },
+    {
+      "name": "System - Access Teacher Routes (should work even though not guru)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/teacher/classes",
+        "headers": {
+          "Authorization": "Bearer {{system_token}}"
+        }
+      },
+      "expected": {
+        "status": 200
+      }
+    },
+    {
+      "name": "System - Access Student Routes (should work even though not siswa)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/student/profile",
+        "headers": {
+          "Authorization": "Bearer {{system_token}}"
+        }
+      },
+      "expected": {
+        "status": 200
+      }
+    },
+    {
+      "name": "Create Kepala Sekolah User",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/admin/users",
+        "headers": {
+          "Authorization": "Bearer {{system_token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "username": "kepala_sekolah",
+          "email": "kepala@sekolah.com",
+          "password": "kepala123",
+          "role_id": 2
+        }
+      },
+      "expected": {
+        "status": 201
+      }
+    },
+    {
+      "name": "Login as Kepala Sekolah",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "kepala@sekolah.com",
+          "password": "kepala123"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "save_token": "kepala_token"
+      }
+    },
+    {
+      "name": "Kepala Sekolah - Access All Users (should work)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/users",
+        "headers": {
+          "Authorization": "Bearer {{kepala_token}}"
+        }
+      },
+      "expected": {
+        "status": 200
+      }
+    },
+    {
+      "name": "Kepala Sekolah - Create Role (admin only - should work)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/admin/roles",
+        "headers": {
+          "Authorization": "Bearer {{kepala_token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "kepala_test_role",
+          "description": "Test role created by kepala sekolah"
+        }
+      },
+      "expected": {
+        "status": 201
+      }
+    },
+    {
+      "name": "Kepala Sekolah - Access Teacher Routes (should work even though not guru)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/teacher/classes",
+        "headers": {
+          "Authorization": "Bearer {{kepala_token}}"
+        }
+      },
+      "expected": {
+        "status": 200
+      }
+    },
+    {
+      "name": "Kepala Sekolah - Access Student Routes (should work even though not siswa)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/student/grades",
+        "headers": {
+          "Authorization": "Bearer {{kepala_token}}"
+        }
+      },
+      "expected": {
+        "status": 200
+      }
+    },
+    {
+      "name": "Create Guru User for Comparison",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/admin/users",
+        "headers": {
+          "Authorization": "Bearer {{system_token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "username": "guru_test",
+          "email": "guru@sekolah.com",
+          "password": "guru123",
+          "role_id": 4
+        }
+      },
+      "expected": {
+        "status": 201
+      }
+    },
+    {
+      "name": "Login as Guru",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "guru@sekolah.com",
+          "password": "guru123"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "save_token": "guru_token"
+      }
+    },
+    {
+      "name": "Guru - Access Admin Routes (should fail)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/admin/roles",
+        "headers": {
+          "Authorization": "Bearer {{guru_token}}",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "guru_test_role",
+          "description": "This should fail"
+        }
+      },
+      "expected": {
+        "status": 403,
+        "message": "Access restricted to system admin and kepala sekolah only"
+      }
+    },
+    {
+      "name": "Guru - Access Student Routes (should fail)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/student/profile",
+        "headers": {
+          "Authorization": "Bearer {{guru_token}}"
+        }
+      },
+      "expected": {
+        "status": 403,
+        "message": "Insufficient role privileges"
+      }
+    },
+    {
+      "name": "Guru - Access Teacher Routes (should work)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/teacher/classes",
+        "headers": {
+          "Authorization": "Bearer {{guru_token}}"
+        }
+      },
+      "expected": {
+        "status": 200
+      }
+    }
+  ],
+  "variables": {
+    "base_url": "http://localhost:8080"
+  }
+}
